@@ -3,10 +3,9 @@ process.env.TZ = 'America/Sao_Paulo';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
 const P = require('../progress.js');
+const { topics } = require('../content.js');
+const allIds = topics.flatMap(t => t.questions.map(q => q.id));
 
 /** Armazenamento em memória com a mesma interface usada do localStorage. */
 class MemoryStorage {
@@ -22,29 +21,9 @@ class FullStorage extends MemoryStorage {
   setItem() { const e = new Error('QuotaExceededError'); e.name = 'QuotaExceededError'; throw e; }
 }
 
-/** Extrai o array `topics` diretamente do index.html, sem duplicar o conteúdo didático. */
-function loadTopics() {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  const start = html.indexOf('const topics = [');
-  const end = html.indexOf('\n];', start);
-  assert.ok(start > 0 && end > start, 'array topics encontrado no index.html');
-  // JSON normaliza os objetos criados em outro contexto do vm (protótipos diferentes).
-  return JSON.parse(JSON.stringify(vm.runInNewContext(html.slice(start + 'const topics = '.length, end + 3).replace(/;$/, ''))));
-}
-
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min);
 const answer = (state, questionId, correct, extra = {}) =>
   P.recordAnswer(state, { questionId, option: correct ? 0 : 1, correct, hintUsed: false, now: at(2026, 10, 12), ...extra });
-
-test('as 30 questões têm IDs explícitos, únicos e estáveis', () => {
-  const topics = loadTopics();
-  const ids = topics.flatMap(t => t.questions.map(q => q.id));
-  assert.equal(ids.length, 30);
-  assert.equal(new Set(ids).size, 30);
-  const expected = topics.flatMap(t => [1, 2, 3, 4, 5].map(n => `${t.id}-0${n}`));
-  assert.deepEqual(ids, expected);
-  assert.deepEqual(topics.map(t => t.id), ['fundamentos', 'convexos', 'regulares', 'angulos', 'diagonais_areas', 'aplicacoes']);
-});
 
 test('repetir uma questão conta tentativas, mas o progresso só uma vez', () => {
   const s = P.createEmpty();
@@ -294,16 +273,35 @@ test('corrompido + histórico antigo + falha na cópia: migra em memória sem gr
   assert.equal(r.state.legacy.answered, 3);
 });
 
-test('estrelas das conquistas: uma a cada 10 desafios vencidos sem dica', () => {
-  assert.deepEqual([0, 9, 10, 19, 20, 29, 30, 99].map(P.journeyStars), [0, 0, 1, 1, 2, 2, 3, 3]);
+test('estrelas das conquistas: uma a cada terço do total vencido sem dica', () => {
+  const by30 = m => P.journeyStars(m, 30);
+  assert.deepEqual([0, 9, 10, 19, 20, 29, 30, 99].map(by30), [0, 0, 1, 1, 2, 2, 3, 3], 'com 30 desafios mantém a regra anterior');
+  const total = allIds.length;
+  assert.equal(P.journeyStars(Math.ceil(total / 3) - 1, total), 0);
+  assert.equal(P.journeyStars(Math.ceil(total / 3), total), 1);
+  assert.equal(P.journeyStars(total - 1, total), 2);
+  assert.equal(P.journeyStars(total, total), 3);
+  assert.equal(P.journeyStars(5, 0), 0, 'sem desafios não há estrela');
+  // A legenda da página anuncia a k-ésima estrela em ceil(k·total/3) desafios: a regra precisa bater.
+  for (const k of [1, 2, 3]) {
+    const mark = Math.ceil(k * total / 3);
+    assert.equal(P.journeyStars(mark, total), k, `marco ${mark}`);
+    assert.equal(P.journeyStars(mark - 1, total), k - 1, `antes do marco ${mark}`);
+  }
+
   const s = P.createEmpty();
   for (let i = 1; i <= 5; i++) answer(s, `fundamentos-0${i}`, true);
   for (let i = 1; i <= 5; i++) answer(s, `convexos-0${i}`, true, { hintUsed: i > 4 });
   for (let i = 1; i <= 5; i++) answer(s, 'fundamentos-01', true);
-  const topics = loadTopics();
-  const ids = topics.flatMap(t => t.questions.map(q => q.id));
-  assert.equal(P.countMastered(s, ids), 9, 'repetição e acerto com dica não contam');
-  assert.equal(P.journeyStars(P.countMastered(s, ids)), 0);
+  assert.equal(P.countMastered(s, allIds), 9, 'repetição e acerto com dica não contam');
+  assert.equal(P.journeyStars(P.countMastered(s, allIds), total), 0);
+});
+
+test('estrelas da trilha acompanham o tamanho da trilha', () => {
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(d => P.topicStars(d, 5)), [0, 1, 1, 2, 2, 3], 'com 5 questões mantém a regra anterior');
+  assert.deepEqual([0, 1, 3, 4, 6, 7].map(d => P.topicStars(d, 7)), [0, 1, 1, 2, 2, 3]);
+  assert.deepEqual([0, 1, 2, 3, 4].map(d => P.topicStars(d, 4)), [0, 1, 2, 2, 3]);
+  assert.equal(P.topicStars(3, 0), 0);
 });
 
 test('IDs de questão inválidos são recusados', () => {

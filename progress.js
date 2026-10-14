@@ -214,9 +214,20 @@
     return questionIds.filter(id => isMastered(state.questions[id])).length;
   }
 
-  /** Estrelas das "Conquistas da jornada": uma a cada 10 desafios vencidos sem dica (máximo 3). */
-  function journeyStars(mastered) {
-    return Math.min(Math.floor(mastered / 10), 3);
+  /** Estrelas das "Conquistas da jornada": uma a cada terço do total de desafios vencidos sem dica (máximo 3). */
+  function journeyStars(mastered, total) {
+    if (!total) return 0;
+    return Math.min(Math.floor(mastered * 3 / total), 3);
+  }
+
+  /**
+   * Estrelas de uma trilha: 1 ao começar, 2 com metade ou mais vencida, 3 com tudo vencido.
+   * Com 5 questões equivale à regra anterior (1–2 → 1, 3–4 → 2, 5 → 3).
+   */
+  function topicStars(done, total) {
+    if (!done || !total) return 0;
+    if (done >= total) return 3;
+    return done * 2 >= total ? 2 : 1;
   }
 
   function dailyStats(state, now) {
@@ -235,6 +246,6 @@
   return {
     SCHEMA_VERSION, STORAGE_KEY, LEGACY_KEY, BACKUP_KEY, DAILY_GOAL, XP_PER_CORRECT,
     localDateKey, createEmpty, sanitize, migrateLegacy, loadProgress, saveProgress,
-    recordAnswer, isMastered, countMastered, journeyStars, dailyStats, totals
+    recordAnswer, isMastered, countMastered, journeyStars, topicStars, dailyStats, totals
   };
 });
