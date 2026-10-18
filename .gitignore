@@ -1,0 +1,13 @@
+# Fotos e digitalizações da apostila são só referência local e nunca vão para o repositório (SEC-03).
+*.jpg
+*.jpeg
+*.png
+*.heic
+*.webp
+*.gif
+*.pdf
+
+# Arquivos do sistema e do editor
+.DS_Store
+Thumbs.db
+node_modules/

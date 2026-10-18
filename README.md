@@ -103,22 +103,47 @@ A versão anterior salvava somente totais (`answered`, `correct`, `xp`, acertos 
 - Os dados não são protegidos contra edição manual: quem abrir as ferramentas do navegador pode alterá-los. A validação evita falhas, não fraudes.
 - O XP pode crescer refazendo questões já vencidas. Isso é intencional (premia a prática), e por esse motivo o XP não é usado como medida de aprendizagem.
 
+## Desenvolvimento orientado por especificação (SDD)
+
+O comportamento do aplicativo está descrito em specs, e as specs são a fonte da verdade. Toda mudança segue o ciclo: **especificar → aprovar a spec → planejar → implementar com testes → verificar → pull request**.
+
+- `specs/constitution.md`: os princípios do projeto (aprendizagem antes da pontuação, progresso preservado, dados no aparelho, conteúdo próprio, zero dependências, acessibilidade).
+- `specs/*.spec.md`: um requisito por comportamento, com ID (por exemplo, `PROG-03`), critérios em Dado / Quando / Então e a forma de verificação (`automática`, `manual` ou `planejada`).
+- `specs/RASTREABILIDADE.md`: matriz gerada automaticamente, ligando cada requisito aos testes que o verificam.
+- `specs/_template.md`: modelo para uma funcionalidade nova.
+
+| Spec | Prefixo | Assunto |
+|---|---|---|
+| `progress.spec.md` | PROG | Desafios vencidos, dica, XP, meta diária, estrelas |
+| `storage.spec.md` | STOR | Salvamento, validação, backup e migração |
+| `content.spec.md` | CONT | Formato e estabilidade do conteúdo |
+| `security.spec.md` | SEC | Privacidade, recursos externos, fotos da apostila, proteção da `main` |
+
+Todo teste cita no título os requisitos que verifica, como `test('[PROG-03] …')`. O comando `npm run check` falha se um requisito automático ficar sem teste, se um teste não citar requisito ou citar um que não existe, ou se a matriz estiver desatualizada. O mesmo comando roda no GitHub Actions a cada pull request (`.github/workflows/ci.yml`), e o modelo de pull request pede a spec e os requisitos afetados. As regras para agentes de IA, como o Claude Code, estão em `CLAUDE.md`.
+
 ## Estrutura
 
 - `index.html`: interface (HTML, CSS e JavaScript da página).
 - `content.js`: conteúdo didático — trilhas, questões e resumos, na ordem da apostila.
 - `progress.js`: regras de progresso, estrelas, meta diária, validação, migração e acesso protegido ao `localStorage`.
-- `tests/content.test.js`: testes do conteúdo (estrutura, IDs estáveis e gabaritos recalculados pelas fórmulas).
-- `tests/progress.test.js`: testes das regras de progresso.
-- `package.json`: apenas o comando de testes; o aplicativo não precisa de instalação.
+- `specs/`: constituição, specs com requisitos, modelo e matriz de rastreabilidade.
+- `tests/content.test.js`: testes do conteúdo (estrutura, IDs e gabaritos estáveis, gabaritos recalculados pelas fórmulas).
+- `tests/progress.test.js`: testes das regras de progresso e de salvamento.
+- `tests/repo.test.js`: testes de segurança sobre os arquivos do repositório.
+- `scripts/check-specs.js`: verificação de rastreabilidade entre specs e testes.
+- `.github/`: fluxo de verificação contínua e modelo de pull request.
+- `CLAUDE.md`: instruções do fluxo SDD para agentes.
+- `package.json`: apenas os comandos de verificação; o aplicativo não precisa de instalação.
 - `README.md`: este guia.
 
 ## Testes
 
-Requer Node.js 20 ou superior; não há dependências para instalar.
+Requer Node.js 22 ou superior; não há dependências para instalar.
 
 ```bash
-npm test
+npm run check        # specs, rastreabilidade e testes (o mesmo que o CI roda)
+npm test             # só os testes
+npm run specs:write  # regera specs/RASTREABILIDADE.md depois de mudar specs ou títulos de testes
 ```
 
 Os testes cobrem:
@@ -132,7 +157,10 @@ Os testes cobrem:
 - armazenamento indisponível ou cheio;
 - migração do formato antigo;
 - estrelas das trilhas e das conquistas da jornada;
-- marcação “Estamos aqui na escola” apontando para uma trilha existente.
+- marcação “Estamos aqui na escola” apontando para uma trilha existente;
+- posição e texto da resposta correta das 30 questões originais;
+- retenção dos últimos 120 dias de atividade;
+- ausência de recursos externos, de envio de dados e de imagens ou PDFs versionados.
 
 Os testes automatizados cobrem o conteúdo e as regras, mas não a interface: veja “Verificação manual” abaixo.
 
