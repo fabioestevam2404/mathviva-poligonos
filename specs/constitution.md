@@ -1,6 +1,6 @@
 # Constituição do MathViva 9
 
-Princípios que valem para todo o projeto. Uma spec, um plano ou um código que contrarie um destes princípios não entra na `main`. Mudar um princípio exige um registro de decisão (ADR) aprovado pelo responsável pelo projeto.
+Princípios que valem para todo o projeto. Uma spec, um plano ou um código que contrarie um destes princípios não entra na `main`. Mudar um princípio exige um registro de decisão (ADR, em `docs/adr/`) aprovado pelo responsável pelo projeto.
 
 ## P1 · A spec é a fonte da verdade
 

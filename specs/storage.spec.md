@@ -2,9 +2,9 @@
 
 Prefixo: STOR
 Status: implementado
-Versão: 1.0
-Código: `progress.js` (`loadProgress`, `saveProgress`, `sanitize`, `migrateLegacy`), `index.html`
-Testes: `tests/progress.test.js`
+Versão: 1.1
+Código: `progress.js` (`loadProgress`, `saveProgress`, `sanitize`, `migrateLegacy`), `app.js`, `schemas/progress-v2.schema.json`
+Testes: `tests/progress.test.js`, `tests/schema.test.js`
 
 O progresso fica no `localStorage` do navegador. O armazenamento pode estar bloqueado, cheio, corrompido ou editado à mão. Esta spec garante que nada disso derrube o aplicativo ou apague dados originais.
 
@@ -99,3 +99,10 @@ Verificação: automática
 - Dado que há registros de atividade em mais de 120 dias diferentes
 - Quando uma nova resposta é registrada
 - Então só os 120 dias mais recentes são mantidos
+
+## STOR-14 · Todo estado carregado ou gravado segue o contrato da versão 2
+Verificação: automática
+- Dado qualquer conteúdo encontrado no armazenamento, inclusive malicioso (textos com HTML, tipos trocados, campos extras)
+- Quando o aplicativo carrega e depois registra respostas
+- Então o estado resultante é válido segundo `schemas/progress-v2.schema.json`
+- E nenhum texto livre vindo do armazenamento é mantido: campos de data só aceitam datas no formato ISO 8601 (`2026-10-14T18:02:11.000Z` ou `2026-10-14`), e qualquer outro texto é descartado

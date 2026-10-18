@@ -144,11 +144,13 @@ test('[CONT-07] a marcação "Estamos aqui na escola" aponta para uma trilha exi
   if (school.currentTopic !== null) assert.ok(topics.some(t => t.id === school.currentTopic), `trilha inexistente: ${school.currentTopic}`);
 });
 
-test('[CONT-08] o index.html carrega o conteúdo de content.js, sem cópia embutida', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  assert.ok(!html.includes('const topics = ['), 'conteúdo não deve ficar duplicado no index.html');
-  const iContent = html.indexOf('<script src="content.js"></script>');
-  const iProgress = html.indexOf('<script src="progress.js"></script>');
-  const iApp = html.indexOf('window.MathVivaContent');
-  assert.ok(iContent > 0 && iContent < iProgress && iProgress < iApp, 'ordem dos scripts: content.js, progress.js, aplicativo');
+test('[CONT-08] o conteúdo vem só de content.js, carregado na ordem certa', () => {
+  const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  const html = read('index.html'), app = read('app.js');
+  for (const [name, src] of [['index.html', html], ['app.js', app]]) {
+    assert.ok(!/\btopics\s*=\s*\[/.test(src), `${name} não deve conter cópia das trilhas`);
+    assert.ok(!src.includes(topics[0].questions[0].q), `${name} não deve conter enunciados`);
+  }
+  const order = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
+  assert.deepEqual(order, ['content.js', 'progress.js', 'html.js', 'app.js']);
 });

@@ -2,9 +2,9 @@
 
 Prefixo: CONT
 Status: implementado
-Versão: 1.0
-Código: `content.js`, `index.html`
-Testes: `tests/content.test.js`
+Versão: 1.1
+Código: `content.js`, `index.html`, `schemas/content.schema.json`
+Testes: `tests/content.test.js`, `tests/schema.test.js`
 
 O conteúdo acompanha a apostila de Matemática usada em sala (Módulos 20 e 21). A tabela de trilhas, páginas e notação está no `README.md`, seção “Conteúdo alinhado à apostila”.
 
@@ -50,8 +50,14 @@ Verificação: automática
 ## CONT-08 · O conteúdo existe em um só lugar
 Verificação: automática
 - Dado o `index.html`
-- Então ele não contém cópia do conteúdo
-- E carrega `content.js`, depois `progress.js` e só então o aplicativo
+- Então nem ele nem `app.js` contêm cópia do conteúdo
+- E a página carrega `content.js`, `progress.js`, `html.js` e por último `app.js`
+
+## CONT-10 · O conteúdo segue o contrato formal
+Verificação: automática
+- Dado o `content.js`
+- Então ele é válido segundo `schemas/content.schema.json`
+- E o validador recusa exemplos de conteúdo malformado (campo faltando, tipo errado, ID fora do padrão, alternativa a mais)
 
 ## CONT-09 · Texto próprio, apostila apenas como referência
 Verificação: manual (revisão de conteúdo no pull request)

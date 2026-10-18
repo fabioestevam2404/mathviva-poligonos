@@ -17,6 +17,8 @@ Aplicativo estático de estudo de polígonos para o 9º ano, alinhado à apostil
 - **Dados salvos:** mudar o formato exige nova `schemaVersion`, migração e testes. Nunca grave por cima de dados originais sem cópia (STOR-08).
 - **Apostila:** use apenas como referência de sequência, termos e notação. Não copie textos, exemplos ou exercícios. Nunca adicione fotos, imagens ou PDFs ao repositório (SEC-03).
 - **Sem dependências e sem recursos externos** (P5, P7, SEC-01, SEC-02).
+- **HTML só pelo gerador seguro:** em `app.js`, toda atribuição a `innerHTML` usa `` html`…` ``; nunca use `outerHTML`, `insertAdjacentHTML`, `document.write`, `eval` nem JavaScript embutido no `index.html` (SEC-04, SEC-05).
+- **Contratos:** mudou o formato do conteúdo ou dos dados salvos? Atualize o schema em `schemas/` junto.
 - **Idioma:** conteúdo, specs e mensagens em português do Brasil.
 
 ## Mapa do código
@@ -25,9 +27,14 @@ Aplicativo estático de estudo de polígonos para o 9º ano, alinhado à apostil
 |---|---|---|
 | `content.js` | Trilhas, questões, resumos, `school.currentTopic` | `specs/content.spec.md` |
 | `progress.js` | Regras de progresso, estrelas, meta diária, salvamento | `specs/progress.spec.md`, `specs/storage.spec.md` |
-| `index.html` | Interface | todas |
+| `html.js` | Gerador de HTML seguro (escapa tudo por padrão) | `specs/security.spec.md` (SEC-05) |
+| `app.js` | Interface: telas, cliques, avisos | todas |
+| `index.html` | Estrutura da página, estilos e CSP; sem JavaScript embutido | `specs/security.spec.md` (SEC-04) |
+| `schemas/*.json` | Contratos do conteúdo e dos dados salvos | CONT-10, STOR-14 |
+| `docs/adr/` | Registros de decisão de arquitetura | `specs/constitution.md` |
 | `tests/*.test.js` | Testes (Node, sem dependências) | todas |
 | `scripts/check-specs.js` | Rastreabilidade spec ↔ teste | `specs/constitution.md` (P2) |
+| `scripts/validate-schema.js` | Validador de JSON Schema mínimo, usado nos testes | CONT-10, STOR-14 |
 
 ## Comandos
 

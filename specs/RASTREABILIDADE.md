@@ -2,7 +2,7 @@
 
 Gerada por `npm run specs:write`. Não edite à mão: altere as specs ou os testes e gere de novo.
 
-Requisitos: 40 · automáticos: 33 · manuais: 5 · planejados: 2 · testes: 37
+Requisitos: 43 · automáticos: 38 · manuais: 5 · planejados: 0 · testes: 48
 
 ## Conteúdo didático (`content.spec.md`)
 
@@ -15,7 +15,8 @@ Requisitos: 40 · automáticos: 33 · manuais: 5 · planejados: 2 · testes: 37
 | **CONT-05** · Toda trilha é completa e indica a apostila | automática | `content.test.js` · cada trilha tem explicação, exemplo, passos, referência à apostila e resumo |
 | **CONT-06** · Os gabaritos numéricos conferem com as fórmulas | automática | `content.test.js` · gabaritos numéricos conferem com as fórmulas |
 | **CONT-07** · “Estamos aqui na escola” aponta para uma trilha existente | automática | `content.test.js` · a marcação "Estamos aqui na escola" aponta para uma trilha existente |
-| **CONT-08** · O conteúdo existe em um só lugar | automática | `content.test.js` · o index.html carrega o conteúdo de content.js, sem cópia embutida |
+| **CONT-08** · O conteúdo existe em um só lugar | automática | `content.test.js` · o conteúdo vem só de content.js, carregado na ordem certa |
+| **CONT-10** · O conteúdo segue o contrato formal | automática | `schema.test.js` · o content.js segue o contrato<br>`schema.test.js` · o contrato recusa conteúdo malformado |
 | **CONT-09** · Texto próprio, apostila apenas como referência | manual: revisão de conteúdo no pull request | — |
 
 ## Progresso de aprendizagem (`progress.spec.md`)
@@ -42,8 +43,9 @@ Requisitos: 40 · automáticos: 33 · manuais: 5 · planejados: 2 · testes: 37
 | **SEC-01** · O aplicativo não carrega recursos de terceiros | automática | `repo.test.js` · o index.html só carrega scripts e estilos do próprio projeto |
 | **SEC-02** · Os dados da estudante não saem do aparelho | automática | `repo.test.js` · o código do aplicativo não envia dados para fora do aparelho |
 | **SEC-03** · Fotos e imagens da apostila nunca são versionadas | automática | `repo.test.js` · nenhuma imagem ou PDF é versionado no repositório |
-| **SEC-04** · Política de segurança de conteúdo (CSP) | planejada: Fase 2 | — |
-| **SEC-05** · Texto dinâmico sempre escapado | planejada: Fase 2 | — |
+| **SEC-04** · Política de segurança de conteúdo (CSP) | automática | `repo.test.js` · a página não tem scripts embutidos nem eventos inline e declara a CSP antes dos scripts |
+| **SEC-05** · Todo texto entra na página escapado | automática | `html.test.js` · toda interpolação é escapada por padrão<br>`html.test.js` · só fragmentos do próprio gerador entram sem escape<br>`html.test.js` · valores vazios e números são tratados sem surpresa<br>`html.test.js` · o aplicativo só escreve HTML pelo gerador seguro |
+| **SEC-07** · As ações do CI são fixadas por versão imutável | automática | `repo.test.js` · o CI usa ações fixadas por SHA e permissões só de leitura |
 | **SEC-06** · A `main` só muda por pull request aprovado com CI verde | manual: configuração do repositório no GitHub | — |
 
 ## Salvamento e recuperação dos dados (`storage.spec.md`)
@@ -63,3 +65,4 @@ Requisitos: 40 · automáticos: 33 · manuais: 5 · planejados: 2 · testes: 37
 | **STOR-11** · Formato antigo ilegível é sinalizado e preservado | automática | `progress.test.js` · formato antigo ilegível é sinalizado e não é apagado |
 | **STOR-12** · Dados atuais corrompidos recorrem ao histórico antigo | automática | `progress.test.js` · dados atuais corrompidos recorrem ao histórico antigo quando ele existe<br>`progress.test.js` · corrompido + histórico antigo + falha na cópia: migra em memória sem gravar |
 | **STOR-13** · O histórico diário guarda os últimos 120 dias com atividade | automática | `progress.test.js` · o histórico diário guarda só os 120 dias mais recentes com atividade |
+| **STOR-14** · Todo estado carregado ou gravado segue o contrato da versão 2 | automática | `schema.test.js` · estados carregados de qualquer conteúdo seguem o contrato da versão 2<br>`schema.test.js` · dados da primeira versão com HTML são limpos na migração<br>`schema.test.js` · o contrato recusa estados fora do formato |

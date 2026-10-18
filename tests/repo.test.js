@@ -7,7 +7,7 @@ const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const APP_FILES = ['index.html', 'content.js', 'progress.js'];
+const APP_FILES = ['index.html', 'content.js', 'progress.js', 'html.js', 'app.js'];
 
 test('[SEC-01] o index.html só carrega scripts e estilos do próprio projeto', () => {
   const html = read('index.html');
@@ -25,6 +25,42 @@ test('[SEC-02] o código do aplicativo não envia dados para fora do aparelho', 
     const m = read(f).match(forbidden);
     assert.equal(m, null, `${f} usa ${m && m[0]}`);
   }
+});
+
+test('[SEC-04] a página não tem scripts embutidos nem eventos inline e declara a CSP antes dos scripts', () => {
+  const html = read('index.html');
+  const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+  assert.ok(scripts.length > 0);
+  for (const [, attrs, body] of scripts) {
+    assert.match(attrs, /\bsrc\s*=/, 'todo <script> precisa de src');
+    assert.equal(body.trim(), '', 'nenhum código dentro de <script>');
+  }
+  assert.doesNotMatch(html, /\son[a-z]+\s*=\s*["']/i, 'sem atributos de evento inline');
+  assert.doesNotMatch(html, /javascript:/i, 'sem URLs javascript:');
+
+  // O valor da CSP contém apóstrofos ('none', 'self'), por isso o atributo usa aspas duplas.
+  const meta = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i);
+  assert.ok(meta, 'falta a meta de Content-Security-Policy');
+  assert.ok(meta.index < html.search(/<script\b/i), 'a CSP precisa vir antes do primeiro script');
+  const csp = Object.fromEntries(meta[1].split(';').map(d => d.trim().split(/\s+/)).filter(p => p[0]).map(([k, ...v]) => [k, v]));
+  assert.deepEqual(csp['default-src'], ["'none'"]);
+  assert.deepEqual(csp['script-src'], ["'self'"], 'scripts só do próprio site, sem unsafe-inline nem unsafe-eval');
+  assert.deepEqual(csp['connect-src'], ["'none'"], 'nenhuma conexão de rede');
+  assert.deepEqual(csp['base-uri'], ["'none'"]);
+  assert.deepEqual(csp['form-action'], ["'none'"]);
+  assert.deepEqual(csp['object-src'], ["'none'"]);
+});
+
+test('[SEC-07] o CI usa ações fixadas por SHA e permissões só de leitura', () => {
+  const ci = read('.github/workflows/ci.yml');
+  const uses = [...ci.matchAll(/^\s*-?\s*uses:\s*(\S+)(.*)$/gm)];
+  assert.ok(uses.length > 0, 'esperava encontrar ações no CI');
+  for (const [, ref, rest] of uses) {
+    assert.match(ref, /^[\w.-]+\/[\w.-]+@[0-9a-f]{40}$/, `ação não fixada por SHA completo: ${ref}`);
+    assert.match(rest, /#\s*v\d+\.\d+\.\d+/, `informe a versão em comentário: ${ref}`);
+  }
+  assert.match(ci, /^permissions:\s*\n\s+contents:\s*read\s*$/m, 'permissões do fluxo devem ser só de leitura');
+  assert.doesNotMatch(ci, /:\s*write\b/, 'nenhuma permissão de escrita');
 });
 
 test('[SEC-03] nenhuma imagem ou PDF é versionado no repositório', () => {
