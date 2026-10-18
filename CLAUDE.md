@@ -26,7 +26,7 @@ Aplicativo estático de estudo de polígonos para o 9º ano, alinhado à apostil
 | Arquivo | Papel | Spec |
 |---|---|---|
 | `content.js` | Trilhas, questões, resumos, `school.currentTopic` | `specs/content.spec.md` |
-| `progress.js` | Regras de progresso, estrelas, meta diária, salvamento | `specs/progress.spec.md`, `specs/storage.spec.md` |
+| `progress.js` | Regras de progresso, estrelas, meta diária, salvamento, fila de revisão | `specs/progress.spec.md`, `specs/storage.spec.md`, `specs/review.spec.md` |
 | `html.js` | Gerador de HTML seguro (escapa tudo por padrão) | `specs/security.spec.md` (SEC-05) |
 | `app.js` | Interface: telas, cliques, avisos | todas |
 | `index.html` | Estrutura da página, estilos e CSP; sem JavaScript embutido | `specs/security.spec.md` (SEC-04) |

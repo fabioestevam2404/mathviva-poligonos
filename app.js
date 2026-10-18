@@ -13,11 +13,17 @@ const storage = (() => { try { return window.localStorage; } catch (e) { return 
 const loaded = P.loadProgress(storage);
 let progress = loaded.state;
 let selectedTopic = schoolTopic || topics[0], questionIndex = 0, answered = false, hintShown = false;
+// Sessão de revisão em andamento (specs/review.spec.md): fila fixa até o fim (REV-07), ou null fora dela.
+let review = null;
 
 const $ = s => document.querySelector(s);
 const allQuestionIds = topics.flatMap(t => t.questions.map(q => q.id));
 const topicMastered = t => P.countMastered(progress, t.questions.map(q => q.id));
 const isSchoolTopic = t => !!schoolTopic && schoolTopic.id === t.id;
+const questionById = new Map(topics.flatMap(t => t.questions.map(q => [q.id, { topic: t, question: q }])));
+const reviewQueue = () => P.reviewQueue(progress, allQuestionIds, P.REVIEW_LIMIT);
+const currentQuestion = () => review ? review.items[review.index].question : selectedTopic.questions[questionIndex];
+const REVIEW_REASONS = { never: 'ainda não acertada', hint: 'acertada só com dica' };
 
 // ── Avisos de armazenamento (STOR-05) ──────────────────────────────────
 const noticeTexts = {
@@ -55,6 +61,7 @@ function renderTopics() {
 }
 
 function selectTopic(id) {
+  review = null;
   selectedTopic = topics.find(t => t.id === id);
   questionIndex = 0; answered = false; hintShown = false;
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.toggle('active', n.dataset.view === 'estudar'));
@@ -78,6 +85,11 @@ function renderLesson() {
   const last = questionIndex === t.questions.length - 1;
   $('#lesson').innerHTML = html`<div class="lesson-head"><div><div class="lesson-kicker">${t.icon} ${t.code} · ${t.tag} · ${t.minutes} minutinhos</div><h2>${t.name}</h2><div class="lesson-ref">📖 Na apostila: ${t.ref}${isSchoolTopic(t) && ' · 📍 tema que está sendo visto em sala'}</div></div><div style="text-align:right"><div class="lesson-meta">Uma ideia + um exemplo + prática</div><button class="link-btn" id="closeLesson" style="margin-top:8px">Fechar ×</button></div></div><div class="lesson-layout"><article class="explain-box"><h3>💡 A ideia principal</h3><p>${t.lesson}</p></article><article class="example-box"><h3>🪄 Vamos ver um exemplo</h3><p><b>${t.example}</b></p><div class="steps">${t.steps.map((s, i) => html`<div class="step"><b>${i + 1}</b><span>${s}</span></div>`)}</div></article></div><details class="summary-preview"><summary>📚 Abrir o resumo detalhado da teoria</summary>${guideHtml(t)}</details><div class="practice"><div class="practice-head"><h3>Agora é sua vez! 🌟</h3><span class="question-count">QUESTÃO ${questionIndex + 1} DE ${t.questions.length}</span></div><div class="question">${q.q}</div><div class="answers">${q.opts.map((o, i) => html`<button class="answer" data-answer="${i}">${String.fromCharCode(65 + i)}. ${o}</button>`)}</div><div class="feedback" id="feedback" aria-live="polite">Escolha uma resposta. Se bater dúvida, peça uma dica!</div><div class="quiz-controls"><button class="hint-btn" id="hintBtn">💭 Me dá uma dica</button><button class="primary next-btn" id="nextBtn">${last ? 'Concluir tema' : 'Próxima questão →'}</button></div></div>`;
   $('#closeLesson').onclick = () => { home('estudar'); $('#homeContent').scrollIntoView({ behavior: 'smooth' }); };
+  wireQuestion(q);
+}
+
+/** Liga dica, alternativas e "próxima" da questão exibida (trilha ou revisão). */
+function wireQuestion(q) {
   $('#hintBtn').onclick = () => {
     hintShown = true;
     const f = $('#feedback');
@@ -112,13 +124,15 @@ function celebrate(message) {
 function answer(index) {
   if (answered) return;
   answered = true;
-  const q = selectedTopic.questions[questionIndex], correct = index === q.a;
+  const q = currentQuestion(), correct = index === q.a;
   document.querySelectorAll('[data-answer]').forEach((b, i) => {
     b.disabled = true;
     if (i === q.a) b.classList.add('correct');
     else if (i === index) b.classList.add('wrong');
   });
+  // Na revisão valem exatamente as mesmas regras (REV-04).
   const r = P.recordAnswer(progress, { questionId: q.id, option: index, correct, hintUsed: hintShown });
+  if (review && r.newlyMastered) review.won++;
   const f = $('#feedback');
   const hintNote = correct && hintShown && !P.isMastered(progress.questions[q.id])
     ? ' Como você usou a dica, este desafio ainda não conta como vencido: tente de novo sem dica quando quiser.' : '';
@@ -137,6 +151,7 @@ function answer(index) {
 }
 
 function nextQuestion() {
+  if (review) { nextReviewQuestion(); return; }
   if (questionIndex < selectedTopic.questions.length - 1) {
     questionIndex++; answered = false; hintShown = false;
     renderLesson();
@@ -147,6 +162,54 @@ function nextQuestion() {
   $('#repeatTopic').onclick = () => selectTopic(t.id);
   $('#chooseAgain').onclick = () => { home('estudar'); $('#homeContent').scrollIntoView({ behavior: 'smooth' }); };
   $('#lesson').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Revisar erros (specs/review.spec.md) ───────────────────────────────
+const qtd = n => n === 1 ? '1 questão' : `${n} questões`;
+
+function startReview() {
+  const { items } = reviewQueue();
+  if (!items.length) { home(); return; }
+  review = { items: items.map(i => ({ ...i, ...questionById.get(i.id) })), index: 0, won: 0 };
+  answered = false; hintShown = false;
+  $('#homeContent').classList.add('hidden');
+  $('#hero').classList.add('hidden');
+  document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+  renderReviewQuestion();
+}
+
+function renderReviewQuestion() {
+  const item = review.items[review.index], t = item.topic, q = item.question;
+  const n = review.items.length, pos = review.index + 1, last = pos === n;
+  const box = $('#lesson');
+  box.classList.add('show');
+  $('#emptyState').classList.add('hidden');
+  box.innerHTML = html`<div class="lesson-head"><div><div class="lesson-kicker">🔁 REVISÃO · QUESTÃO ${pos} DE ${n}</div><h2 id="reviewHeading" tabindex="-1">${t.code} ${t.name}</h2><div class="lesson-ref">📖 Na apostila: ${t.ref}</div><span class="review-reason ${item.reason}">Motivo: ${REVIEW_REASONS[item.reason]}</span></div><button class="link-btn" id="closeReview">Sair da revisão ×</button></div><div class="practice"><div class="practice-head"><h3>Tente de novo, com calma 💪</h3><span class="question-count">QUESTÃO ${pos} DE ${n}</span></div><div class="question">${q.q}</div><div class="answers">${q.opts.map((o, i) => html`<button class="answer" data-answer="${i}">${String.fromCharCode(65 + i)}. ${o}</button>`)}</div><div class="feedback" id="feedback" aria-live="polite">Escolha uma resposta. A dica continua disponível, mas o desafio só é vencido sem ela.</div><div class="quiz-controls"><button class="hint-btn" id="hintBtn">💭 Me dá uma dica</button><button class="primary next-btn" id="nextBtn">${last ? 'Ver resultado' : 'Próxima questão →'}</button></div></div>`;
+  wireQuestion(q);
+  $('#closeReview').onclick = () => home();
+  // Leva o foco ao título para o leitor de tela anunciar a nova questão (REV-11).
+  $('#reviewHeading').focus({ preventScroll: true });
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function nextReviewQuestion() {
+  if (review.index < review.items.length - 1) {
+    review.index++; answered = false; hintShown = false;
+    renderReviewQuestion();
+    return;
+  }
+  finishReview();
+}
+
+function finishReview() {
+  const { won, items } = review, remaining = reviewQueue().total;
+  review = null;
+  const box = $('#lesson');
+  box.innerHTML = html`<div class="completion-head"><div class="big-emoji">${won ? '🏆' : '🌱'}</div><div class="lesson-kicker">REVISÃO CONCLUÍDA</div><h2 id="reviewHeading" tabindex="-1">Você venceu ${won} de ${qtd(items.length)} nesta revisão</h2><p style="color:var(--muted);font-size:13px">${remaining ? `Ainda há ${qtd(remaining)} para revisar.` : 'Não há mais questões para revisar. Excelente trabalho!'}${won === 0 ? ' Cada tentativa conta: o que hoje ainda não saiu, amanhã sai.' : ''}</p></div><div class="completion-actions">${remaining > 0 && html`<button class="primary" id="reviewAgain">Revisar mais ${qtd(Math.min(remaining, P.REVIEW_LIMIT))} →</button>`}<button class="ghost" id="reviewHome">Voltar ao início</button></div>`;
+  if (remaining > 0) $('#reviewAgain').onclick = startReview;
+  $('#reviewHome').onclick = () => home();
+  $('#reviewHeading').focus({ preventScroll: true });
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── Painel lateral e estrelas (PROG-07, PROG-10) ───────────────────────
@@ -164,21 +227,37 @@ function renderStats() {
   const mastered = P.countMastered(progress, allQuestionIds), stars = P.journeyStars(mastered, allQuestionIds.length), starsEl = $('#journeyStars');
   starsEl.textContent = [0, 1, 2].map(i => i < stars ? '★' : '☆').join('  ');
   starsEl.setAttribute('aria-label', `${stars} de 3 estrelas · ${mastered} de ${allQuestionIds.length} desafios vencidos sem dica`);
+  // Cartão "Para revisar": só aparece quando há o que revisar (REV-08).
+  const pending = reviewQueue().total;
+  $('#reviewCard').hidden = pending === 0;
+  if (pending) {
+    $('#reviewTitle').textContent = `${qtd(pending)} para revisar`;
+    $('#reviewDesc').textContent = pending > P.REVIEW_LIMIT
+      ? `Volte às questões que você errou ou acertou com dica, em sessões de até ${P.REVIEW_LIMIT}.`
+      : 'Volte às questões que você errou ou acertou com dica.';
+  }
 }
 
 // ── Telas: progresso, resumos e início ─────────────────────────────────
 function showProgress() {
+  review = null;
   const box = $('#lesson');
   $('#homeContent').classList.add('hidden');
   $('#hero').classList.add('hidden');
   box.classList.add('show');
   const { answered: tried, correct } = P.totals(progress), mastered = P.countMastered(progress, allQuestionIds), legacy = progress.legacy;
   const legacyNote = legacy && legacy.answered > 0 ? html`<p class="legacy-note">📜 Os números de tentativas, acertos e XP incluem ${legacy.answered} resposta${legacy.answered === 1 ? '' : 's'} e ${legacy.correct} acerto${legacy.correct === 1 ? '' : 's'} da versão anterior do aplicativo. Aquela versão não registrava cada questão, por isso esses acertos não aparecem como desafios vencidos.</p>` : '';
-  box.innerHTML = html`<div class="lesson-head"><div><div class="lesson-kicker">🌱 SUA JORNADA</div><h2>Olha só o quanto você já avançou!</h2></div><button class="link-btn" id="closeProgress">Voltar ao início ×</button></div><div class="sidebar" style="margin-top:20px"><div class="side-card"><div class="side-title">🏅 Desafios vencidos</div><div class="side-caption">Questões diferentes acertadas sem usar dica.</div><b style="font-size:22px">${mastered} de ${allQuestionIds.length}</b><span style="font-size:12px;color:var(--muted)"> desafios</span></div><div class="side-card"><div class="side-title">⭐ ${progress.xp || 0} pontos de coragem</div><div class="side-caption">Cada questão respondida conta.</div><b style="font-size:22px">${tried}</b><span style="font-size:12px;color:var(--muted)"> questões tentadas</span></div><div class="side-card"><div class="side-title">🎯 ${correct} acertos</div><div class="side-caption">Aprender também é tentar de novo.</div><b style="font-size:22px">${tried ? Math.round(correct / tried * 100) : 0}%</b><span style="font-size:12px;color:var(--muted)"> de aproveitamento</span></div></div>${legacyNote}<h3 style="margin:22px 0 12px;font-size:15px">Temas que você está descobrindo</h3><div class="topic-grid">${topics.map(t => html`<div class="topic-card"><div class="topic-top"><div class="topic-icon" style="background:${t.color}">${t.icon}</div><span class="topic-tag">${topicMastered(t)} de ${t.questions.length} sem dica</span></div><h3>${t.name}</h3><p>${t.desc}</p></div>`)}</div>`;
+  const pending = reviewQueue().total;
+  const reviewBlock = pending
+    ? html`<div class="review-cta"><button class="primary" id="progressReview">🔁 Revisar ${qtd(pending)} →</button></div>`
+    : html`<p class="review-empty">✅ Nenhuma questão para revisar agora. Quando você errar uma questão ou acertar usando a dica, ela aparece aqui para você tentar de novo.</p>`;
+  box.innerHTML = html`<div class="lesson-head"><div><div class="lesson-kicker">🌱 SUA JORNADA</div><h2>Olha só o quanto você já avançou!</h2></div><button class="link-btn" id="closeProgress">Voltar ao início ×</button></div><div class="sidebar" style="margin-top:20px"><div class="side-card"><div class="side-title">🏅 Desafios vencidos</div><div class="side-caption">Questões diferentes acertadas sem usar dica.</div><b style="font-size:22px">${mastered} de ${allQuestionIds.length}</b><span style="font-size:12px;color:var(--muted)"> desafios</span></div><div class="side-card"><div class="side-title">⭐ ${progress.xp || 0} pontos de coragem</div><div class="side-caption">Cada questão respondida conta.</div><b style="font-size:22px">${tried}</b><span style="font-size:12px;color:var(--muted)"> questões tentadas</span></div><div class="side-card"><div class="side-title">🎯 ${correct} acertos</div><div class="side-caption">Aprender também é tentar de novo.</div><b style="font-size:22px">${tried ? Math.round(correct / tried * 100) : 0}%</b><span style="font-size:12px;color:var(--muted)"> de aproveitamento</span></div></div>${reviewBlock}${legacyNote}<h3 style="margin:22px 0 12px;font-size:15px">Temas que você está descobrindo</h3><div class="topic-grid">${topics.map(t => html`<div class="topic-card"><div class="topic-top"><div class="topic-icon" style="background:${t.color}">${t.icon}</div><span class="topic-tag">${topicMastered(t)} de ${t.questions.length} sem dica</span></div><h3>${t.name}</h3><p>${t.desc}</p></div>`)}</div>`;
   $('#closeProgress').onclick = () => home();
+  if (pending) $('#progressReview').onclick = startReview;
 }
 
 function showSummaries() {
+  review = null;
   const box = $('#lesson');
   $('#homeContent').classList.add('hidden');
   $('#hero').classList.add('hidden');
@@ -198,6 +277,7 @@ function showTopicSummary(id) {
 }
 
 function home(view = 'inicio') {
+  review = null;
   document.querySelectorAll('.nav-btn').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   $('#homeContent').classList.remove('hidden');
   $('#hero').classList.remove('hidden');
@@ -216,6 +296,7 @@ document.querySelectorAll('.nav-btn').forEach(b => {
   };
 });
 $('#continueBtn').onclick = () => selectTopic(selectedTopic.id);
+$('#reviewBtn').onclick = startReview;
 $('#allTopics').onclick = () => {
   const toast = $('#toast');
   toast.textContent = 'Escolha uma trilha, veja a explicação e vença os desafios sem dica para conquistar até 3 estrelas!';

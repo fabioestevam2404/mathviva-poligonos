@@ -2,7 +2,7 @@
 
 Gerada por `npm run specs:write`. Não edite à mão: altere as specs ou os testes e gere de novo.
 
-Requisitos: 43 · automáticos: 38 · manuais: 5 · planejados: 0 · testes: 48
+Requisitos: 54 · automáticos: 44 · manuais: 10 · planejados: 0 · testes: 54
 
 ## Conteúdo didático (`content.spec.md`)
 
@@ -35,6 +35,22 @@ Requisitos: 43 · automáticos: 38 · manuais: 5 · planejados: 0 · testes: 48
 | **PROG-10** · Estrelas da jornada a cada terço do total | automática | `progress.test.js` · estrelas das conquistas: uma a cada terço do total vencido sem dica |
 | **PROG-11** · Estrelas da trilha proporcionais ao seu tamanho | automática | `progress.test.js` · estrelas da trilha acompanham o tamanho da trilha |
 | **PROG-12** · Só IDs de questão válidos são registrados | automática | `progress.test.js` · IDs de questão inválidos são recusados |
+
+## Revisar erros (`review.spec.md`)
+
+| Requisito | Verificação | Testes |
+|---|---|---|
+| **REV-01** · Entram na revisão as questões tentadas e ainda não vencidas | automática | `review.test.js` · entram as questões tentadas e ainda não vencidas |
+| **REV-02** · A ordem segue a prioridade de aprendizagem | automática | `review.test.js` · primeiro as nunca acertadas, depois as acertadas com dica, na ordem da apostila |
+| **REV-03** · A sessão é curta | automática | `review.test.js` · a sessão tem no máximo 10 questões e informa o total |
+| **REV-04** · Respostas na revisão seguem as regras de sempre | automática | `review.test.js` · respostas na revisão seguem as regras de sempre |
+| **REV-05** · A revisão não grava nenhum dado novo | automática | `review.test.js` · calcular a revisão não altera o progresso nem o formato salvo |
+| **REV-06** · Questões que não existem mais no conteúdo são ignoradas | automática | `review.test.js` · questões que não existem mais no conteúdo são ignoradas |
+| **REV-07** · A lista da sessão não muda enquanto ela acontece | manual: navegador | — |
+| **REV-08** · O acesso mostra quantas questões há para revisar | manual: navegador | — |
+| **REV-09** · Cada questão mostra de onde veio | manual: navegador | — |
+| **REV-10** · O fim da sessão mostra o resultado | manual: navegador | — |
+| **REV-11** · A revisão é acessível | manual: navegador e leitor de tela | — |
 
 ## Segurança e privacidade (`security.spec.md`)
 

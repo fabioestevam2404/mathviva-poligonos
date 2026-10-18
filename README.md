@@ -57,6 +57,17 @@ O conteúdo fica em `content.js`. Para uma nova trilha, acrescente um objeto em 
 - Mover uma questão para outra trilha é seguro: o progresso é salvo por questão, e não por trilha.
 - Depois de mudar a lista, atualize o retrato de IDs em `tests/content.test.js`; o teste falha de propósito até que isso seja feito.
 
+## Revisar erros
+
+Quando há questões para revisar, a tela inicial mostra o cartão “Para revisar” com a quantidade, e “Meu progresso” oferece o mesmo botão.
+
+- **O que entra:** questões já respondidas e ainda não vencidas sem dica. Questões nunca respondidas continuam nas trilhas.
+- **Ordem:** primeiro as que ainda não foram acertadas, depois as acertadas só com dica; dentro de cada grupo, a ordem da apostila.
+- **Sessão curta:** até 10 questões por vez. A lista da sessão não muda enquanto ela acontece.
+- **Mesmas regras:** cada resposta conta XP, tentativas e meta diária. Acertar sem dica vence a questão, que sai da próxima revisão.
+- **Cada questão mostra** a trilha de origem, a página da apostila e o motivo da revisão. No fim, a tela mostra quantas foram vencidas e quantas restam.
+- **Nenhum dado novo é gravado:** a lista é calculada a partir do progresso que já existe, sem mudar o formato salvo.
+
 ## Como o progresso funciona
 
 O aplicativo acompanha três indicadores diferentes, que não se misturam:
@@ -120,6 +131,7 @@ O comportamento do aplicativo está descrito em specs, e as specs são a fonte d
 | `storage.spec.md` | STOR | Salvamento, validação, backup e migração |
 | `content.spec.md` | CONT | Formato e estabilidade do conteúdo |
 | `security.spec.md` | SEC | Privacidade, recursos externos, fotos da apostila, proteção da `main` |
+| `review.spec.md` | REV | Modo “Revisar erros” |
 
 Todo teste cita no título os requisitos que verifica, como `test('[PROG-03] …')`. O comando `npm run check` falha se um requisito automático ficar sem teste, se um teste não citar requisito ou citar um que não existe, ou se a matriz estiver desatualizada. O mesmo comando roda no GitHub Actions a cada pull request (`.github/workflows/ci.yml`), e o modelo de pull request pede a spec e os requisitos afetados. As regras para agentes de IA, como o Claude Code, estão em `CLAUDE.md`.
 
@@ -134,6 +146,7 @@ Todo teste cita no título os requisitos que verifica, como `test('[PROG-03] …
 - `schemas/`: contratos do conteúdo e dos dados salvos.
 - `docs/adr/`: registros de decisão de arquitetura.
 - `tests/html.test.js` e `tests/schema.test.js`: testes do gerador de HTML e dos contratos.
+- `tests/review.test.js`: testes do modo “Revisar erros”.
 - `scripts/validate-schema.js`: validador de JSON Schema mínimo, sem dependências.
 - `tests/content.test.js`: testes do conteúdo (estrutura, IDs e gabaritos estáveis, gabaritos recalculados pelas fórmulas).
 - `tests/progress.test.js`: testes das regras de progresso e de salvamento.
@@ -171,7 +184,8 @@ Os testes cobrem:
 - ausência de recursos externos, de envio de dados e de imagens ou PDFs versionados;
 - política de segurança de conteúdo, ausência de JavaScript embutido e escape de todo texto inserido na página;
 - conteúdo e dados salvos conferidos contra os contratos em `schemas/`, inclusive com dados maliciosos no armazenamento;
-- ações do CI fixadas por SHA e com permissões só de leitura.
+- ações do CI fixadas por SHA e com permissões só de leitura;
+- lista de revisão: quais questões entram, ordem de prioridade, limite de 10, mesmas regras de pontuação e nenhum dado novo gravado.
 
 Os testes automatizados cobrem o conteúdo e as regras, mas não a interface: veja “Verificação manual” abaixo.
 
@@ -186,6 +200,6 @@ Os testes automatizados cobrem o conteúdo e as regras, mas não a interface: ve
 ## Próximos passos possíveis
 
 1. Validar linguagem, nível e trilhas com a estudante e o responsável.
-2. Acrescentar modo de revisão dos erros e níveis de dificuldade (os dados por questão já permitem isso).
+2. Evoluir a revisão com repetição espaçada (rever cada questão em intervalos crescentes) e acrescentar níveis de dificuldade.
 3. Incluir os próximos módulos da apostila conforme o planejamento escolar.
 4. Evoluir para perfis sincronizados entre dispositivos apenas se isso for necessário.

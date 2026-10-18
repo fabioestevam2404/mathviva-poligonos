@@ -19,6 +19,7 @@
   const DAILY_GOAL = 5;
   const XP_PER_CORRECT = 10;
   const MAX_ACTIVITY_DAYS = 120;
+  const REVIEW_LIMIT = 10;
 
   const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const isCount = v => Number.isInteger(v) && v >= 0;
@@ -233,6 +234,25 @@
     return done * 2 >= total ? 2 : 1;
   }
 
+  /**
+   * Fila do modo "Revisar erros" (specs/review.spec.md). Não altera `state` (REV-05).
+   * `questionIds` vem na ordem das trilhas da apostila; IDs fora dela são ignorados (REV-06).
+   * Entram as questões tentadas e não vencidas (REV-01): primeiro as nunca acertadas, depois as
+   * acertadas só com dica, cada grupo na ordem da apostila (REV-02), limitadas a `limit` (REV-03).
+   * Retorna { items: [{ id, reason: 'never' | 'hint' }], total }.
+   */
+  function reviewQueue(state, questionIds, limit) {
+    const never = [], hint = [];
+    for (const id of questionIds) {
+      const entry = state.questions[id];
+      if (!entry || isMastered(entry)) continue;
+      (entry.correctCount === 0 ? never : hint).push({ id, reason: entry.correctCount === 0 ? 'never' : 'hint' });
+    }
+    const all = never.concat(hint);
+    const max = Number.isInteger(limit) && limit > 0 ? limit : REVIEW_LIMIT;
+    return { items: all.slice(0, max), total: all.length };
+  }
+
   function dailyStats(state, now) {
     const a = state.activity[localDateKey(now)] || { answered: 0, correct: 0 };
     return { answered: a.answered, correct: a.correct, goal: DAILY_GOAL, percent: Math.min(a.answered / DAILY_GOAL * 100, 100) };
@@ -247,8 +267,8 @@
   }
 
   return {
-    SCHEMA_VERSION, STORAGE_KEY, LEGACY_KEY, BACKUP_KEY, DAILY_GOAL, XP_PER_CORRECT,
+    SCHEMA_VERSION, STORAGE_KEY, LEGACY_KEY, BACKUP_KEY, DAILY_GOAL, XP_PER_CORRECT, REVIEW_LIMIT,
     localDateKey, createEmpty, sanitize, migrateLegacy, loadProgress, saveProgress,
-    recordAnswer, isMastered, countMastered, journeyStars, topicStars, dailyStats, totals
+    recordAnswer, isMastered, countMastered, journeyStars, topicStars, reviewQueue, dailyStats, totals
   };
 });
