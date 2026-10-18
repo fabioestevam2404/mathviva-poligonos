@@ -1,11 +1,14 @@
 {
   "name": "mathviva-poligonos",
   "private": true,
-  "description": "MathViva 9 — Jornada dos Polígonos (aplicativo estático). Este arquivo existe apenas para executar os testes.",
+  "description": "MathViva 9 — Jornada dos Polígonos (aplicativo estático). Este arquivo existe apenas para os comandos de verificação.",
   "scripts": {
-    "test": "node --test \"tests/**/*.test.js\""
+    "test": "node --test \"tests/**/*.test.js\"",
+    "specs": "node scripts/check-specs.js",
+    "specs:write": "node scripts/check-specs.js --write",
+    "check": "npm run specs && npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

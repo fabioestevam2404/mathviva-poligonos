@@ -25,7 +25,7 @@ const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min);
 const answer = (state, questionId, correct, extra = {}) =>
   P.recordAnswer(state, { questionId, option: correct ? 0 : 1, correct, hintUsed: false, now: at(2026, 10, 12), ...extra });
 
-test('repetir uma questão conta tentativas, mas o progresso só uma vez', () => {
+test('[PROG-01][PROG-02][PROG-06] repetir uma questão conta tentativas, mas o progresso só uma vez', () => {
   const s = P.createEmpty();
   const r1 = answer(s, 'angulos-01', true);
   const r2 = answer(s, 'angulos-01', true);
@@ -39,7 +39,7 @@ test('repetir uma questão conta tentativas, mas o progresso só uma vez', () =>
   assert.deepEqual(P.totals(s), { answered: 2, correct: 2, xp: 20 });
 });
 
-test('guarda a primeira resposta e atualiza o último resultado', () => {
+test('[PROG-02] guarda a primeira resposta e atualiza o último resultado', () => {
   const s = P.createEmpty();
   answer(s, 'convexos-04', false, { option: 3, now: at(2026, 10, 10) });
   answer(s, 'convexos-04', true, { option: 2, now: at(2026, 10, 11) });
@@ -51,14 +51,14 @@ test('guarda a primeira resposta e atualiza o último resultado', () => {
   assert.ok(P.isMastered(q));
 });
 
-test('errar não conta como desafio vencido', () => {
+test('[PROG-01][PROG-06] errar não conta como desafio vencido', () => {
   const s = P.createEmpty();
   answer(s, 'regulares-02', false);
   assert.equal(P.countMastered(s, ['regulares-02']), 0);
   assert.equal(s.xp, 0);
 });
 
-test('acerto com dica não conta no progresso, mas registra o uso da dica e soma XP', () => {
+test('[PROG-03][PROG-05] acerto com dica não conta no progresso, mas registra o uso da dica e soma XP', () => {
   const s = P.createEmpty();
   const r = answer(s, 'fundamentos-02', true, { hintUsed: true });
   assert.equal(r.newlyMastered, false);
@@ -76,7 +76,7 @@ test('acerto com dica não conta no progresso, mas registra o uso da dica e soma
   assert.equal(P.countMastered(s, ['fundamentos-02']), 1, 'usar dica depois não desfaz a conquista');
 });
 
-test('meta diária considera apenas a data local do dispositivo', () => {
+test('[PROG-07] meta diária considera apenas a data local do dispositivo', () => {
   const s = P.createEmpty();
   for (let i = 0; i < 3; i++) answer(s, `aplicacoes-0${i + 1}`, true, { now: at(2026, 10, 12, 23, 50) });
   answer(s, 'aplicacoes-04', false, { now: at(2026, 10, 13, 0, 10) });
@@ -90,7 +90,7 @@ test('meta diária considera apenas a data local do dispositivo', () => {
   assert.equal(P.totals(s).answered, 4, 'total acumulado não depende do dia');
 });
 
-test('data local difere da data UTC perto da meia-noite', () => {
+test('[PROG-08] data local difere da data UTC perto da meia-noite', () => {
   // 22h30 de 12/10 em São Paulo já é 13/10 em UTC.
   const evening = new Date('2026-10-13T01:30:00Z');
   assert.equal(P.localDateKey(evening), '2026-10-12');
@@ -99,7 +99,7 @@ test('data local difere da data UTC perto da meia-noite', () => {
   assert.deepEqual(Object.keys(s.activity), ['2026-10-12']);
 });
 
-test('meta diária fica limitada a 100%', () => {
+test('[PROG-07] meta diária fica limitada a 100%', () => {
   const s = P.createEmpty();
   for (let i = 0; i < 8; i++) answer(s, 'angulos-03', i % 2 === 0);
   const d = P.dailyStats(s, at(2026, 10, 12));
@@ -107,7 +107,7 @@ test('meta diária fica limitada a 100%', () => {
   assert.equal(d.percent, 100);
 });
 
-test('salvar e carregar preserva o estado e o schemaVersion', () => {
+test('[STOR-01] salvar e carregar preserva o estado e o schemaVersion', () => {
   const storage = new MemoryStorage();
   const s = P.createEmpty();
   answer(s, 'diagonais_areas-05', true, { hintUsed: true });
@@ -119,13 +119,13 @@ test('salvar e carregar preserva o estado e o schemaVersion', () => {
   assert.deepEqual(loaded.state, s);
 });
 
-test('sem dados salvos começa vazio', () => {
+test('[STOR-02] sem dados salvos começa vazio', () => {
   const r = P.loadProgress(new MemoryStorage());
   assert.equal(r.status, 'empty');
   assert.deepEqual(r.state, P.createEmpty());
 });
 
-test('JSON inválido: não lança erro, guarda cópia e recomeça', () => {
+test('[STOR-06] JSON inválido: não lança erro, guarda cópia e recomeça', () => {
   const storage = new MemoryStorage({ [P.STORAGE_KEY]: '{"schemaVersion":2,"xp":' });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'corrupt');
@@ -133,7 +133,7 @@ test('JSON inválido: não lança erro, guarda cópia e recomeça', () => {
   assert.equal(storage.getItem(P.BACKUP_KEY), '{"schemaVersion":2,"xp":');
 });
 
-test('estruturas com formato errado são tratadas como corrompidas', () => {
+test('[STOR-06] estruturas com formato errado são tratadas como corrompidas', () => {
   for (const raw of ['null', '[]', '42', '"texto"', '{}', '{"schemaVersion":3,"xp":5}', '{"schemaVersion":"2"}']) {
     const r = P.loadProgress(new MemoryStorage({ [P.STORAGE_KEY]: raw }));
     assert.equal(r.status, 'corrupt', raw);
@@ -141,7 +141,7 @@ test('estruturas com formato errado são tratadas como corrompidas', () => {
   }
 });
 
-test('campos inválidos são descartados individualmente, preservando o restante', () => {
+test('[STOR-07] campos inválidos são descartados individualmente, preservando o restante', () => {
   const good = P.createEmpty();
   answer(good, 'convexos-01', true);
   const raw = JSON.parse(JSON.stringify(good));
@@ -161,7 +161,7 @@ test('campos inválidos são descartados individualmente, preservando o restante
   assert.ok(storage.getItem(P.BACKUP_KEY), 'conteúdo original guardado antes de ser regravado');
 });
 
-test('localStorage inacessível: carregar e salvar não lançam erro', () => {
+test('[STOR-03] localStorage inacessível: carregar e salvar não lançam erro', () => {
   for (const storage of [null, new ThrowingStorage()]) {
     const r = P.loadProgress(storage);
     assert.equal(r.status, 'unavailable');
@@ -174,7 +174,7 @@ test('localStorage inacessível: carregar e salvar não lançam erro', () => {
   }
 });
 
-test('cota excedida na gravação é informada sem perder o estado em memória', () => {
+test('[STOR-04] cota excedida na gravação é informada sem perder o estado em memória', () => {
   const storage = new FullStorage();
   const s = P.createEmpty();
   answer(s, 'aplicacoes-05', true);
@@ -184,7 +184,7 @@ test('cota excedida na gravação é informada sem perder o estado em memória',
   assert.equal(s.xp, 10);
 });
 
-test('migração do formato antigo preserva o histórico sem inventar acertos por questão', () => {
+test('[STOR-09][STOR-10] migração do formato antigo preserva o histórico sem inventar acertos por questão', () => {
   const legacy = { answered: 12, correct: 8, xp: 80, topics: { fundamentos: 7, angulos: 1 }, lastStudy: '2026-10-01' };
   const legacyText = JSON.stringify(legacy);
   const storage = new MemoryStorage({ [P.LEGACY_KEY]: legacyText });
@@ -211,7 +211,7 @@ test('migração do formato antigo preserva o histórico sem inventar acertos po
   assert.equal(reloaded.state.legacy.answered, 12);
 });
 
-test('migração descarta valores antigos inválidos', () => {
+test('[STOR-09] migração descarta valores antigos inválidos', () => {
   const storage = new MemoryStorage({ [P.LEGACY_KEY]: JSON.stringify({ answered: -1, correct: '3', xp: 2.5, topics: { angulos: 'x', convexos: 2 } }) });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'migrated');
@@ -220,14 +220,14 @@ test('migração descarta valores antigos inválidos', () => {
   assert.equal(r.state.xp, 0);
 });
 
-test('formato antigo ilegível é sinalizado e não é apagado', () => {
+test('[STOR-11] formato antigo ilegível é sinalizado e não é apagado', () => {
   const storage = new MemoryStorage({ [P.LEGACY_KEY]: 'não é json' });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'corrupt');
   assert.equal(storage.getItem(P.LEGACY_KEY), 'não é json');
 });
 
-test('dados atuais corrompidos recorrem ao histórico antigo quando ele existe', () => {
+test('[STOR-12] dados atuais corrompidos recorrem ao histórico antigo quando ele existe', () => {
   const storage = new MemoryStorage({ [P.STORAGE_KEY]: '###', [P.LEGACY_KEY]: JSON.stringify({ answered: 3, correct: 2, xp: 20 }) });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'corrupt');
@@ -240,7 +240,7 @@ class NoBackupStorage extends MemoryStorage {
   setItem(k, v) { if (k === P.BACKUP_KEY) throw new Error('QuotaExceededError'); super.setItem(k, v); }
 }
 
-test('dados corrompidos sem cópia possível: funciona em memória e bloqueia a gravação', () => {
+test('[STOR-08] dados corrompidos sem cópia possível: funciona em memória e bloqueia a gravação', () => {
   const storage = new NoBackupStorage({ [P.STORAGE_KEY]: '{quebrado' });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'corrupt');
@@ -251,21 +251,21 @@ test('dados corrompidos sem cópia possível: funciona em memória e bloqueia a 
   assert.equal(storage.getItem(P.STORAGE_KEY), '{quebrado', 'o original não foi tocado');
 });
 
-test('dados reparáveis sem cópia possível também bloqueiam a gravação', () => {
+test('[STOR-08] dados reparáveis sem cópia possível também bloqueiam a gravação', () => {
   const raw = JSON.stringify({ ...P.createEmpty(), xp: 'muito' });
   const r = P.loadProgress(new NoBackupStorage({ [P.STORAGE_KEY]: raw }));
   assert.equal(r.status, 'repaired');
   assert.equal(r.writable, false);
 });
 
-test('com cópia feita, a gravação continua liberada', () => {
+test('[STOR-08] com cópia feita, a gravação continua liberada', () => {
   assert.equal(P.loadProgress(new MemoryStorage({ [P.STORAGE_KEY]: '{quebrado' })).writable, true);
   assert.equal(P.loadProgress(new MemoryStorage()).writable, true);
   assert.equal(P.loadProgress(new MemoryStorage({ [P.LEGACY_KEY]: 'x' })).writable, true, 'a chave antiga nunca é sobrescrita');
   assert.equal(P.loadProgress(null).writable, false);
 });
 
-test('corrompido + histórico antigo + falha na cópia: migra em memória sem gravar', () => {
+test('[STOR-08][STOR-12] corrompido + histórico antigo + falha na cópia: migra em memória sem gravar', () => {
   const storage = new NoBackupStorage({ [P.STORAGE_KEY]: '###', [P.LEGACY_KEY]: JSON.stringify({ answered: 3, correct: 2, xp: 20 }) });
   const r = P.loadProgress(storage);
   assert.equal(r.status, 'corrupt');
@@ -273,7 +273,7 @@ test('corrompido + histórico antigo + falha na cópia: migra em memória sem gr
   assert.equal(r.state.legacy.answered, 3);
 });
 
-test('estrelas das conquistas: uma a cada terço do total vencido sem dica', () => {
+test('[PROG-10] estrelas das conquistas: uma a cada terço do total vencido sem dica', () => {
   const by30 = m => P.journeyStars(m, 30);
   assert.deepEqual([0, 9, 10, 19, 20, 29, 30, 99].map(by30), [0, 0, 1, 1, 2, 2, 3, 3], 'com 30 desafios mantém a regra anterior');
   const total = allIds.length;
@@ -297,14 +297,27 @@ test('estrelas das conquistas: uma a cada terço do total vencido sem dica', () 
   assert.equal(P.journeyStars(P.countMastered(s, allIds), total), 0);
 });
 
-test('estrelas da trilha acompanham o tamanho da trilha', () => {
+test('[PROG-11] estrelas da trilha acompanham o tamanho da trilha', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 5].map(d => P.topicStars(d, 5)), [0, 1, 1, 2, 2, 3], 'com 5 questões mantém a regra anterior');
   assert.deepEqual([0, 1, 3, 4, 6, 7].map(d => P.topicStars(d, 7)), [0, 1, 1, 2, 2, 3]);
   assert.deepEqual([0, 1, 2, 3, 4].map(d => P.topicStars(d, 4)), [0, 1, 2, 2, 3]);
   assert.equal(P.topicStars(3, 0), 0);
 });
 
-test('IDs de questão inválidos são recusados', () => {
+test('[STOR-13] o histórico diário guarda só os 120 dias mais recentes com atividade', () => {
+  const s = P.createEmpty();
+  const days = [];
+  for (let i = 0; i < 125; i++) days.push(P.localDateKey(at(2026, 1, 1 + i)));
+  for (const d of days) s.activity[d] = { answered: 1, correct: 0 };
+  answer(s, 'angulos-01', true, { now: at(2026, 10, 12) });
+  const kept = Object.keys(s.activity).sort();
+  assert.equal(kept.length, 120);
+  assert.equal(kept[kept.length - 1], '2026-10-12', 'o dia da nova resposta é mantido');
+  assert.ok(!kept.includes(days[0]), 'os dias mais antigos saem primeiro');
+  assert.deepEqual(kept.slice(0, -1), days.slice(-119), 'mantém os 119 dias anteriores mais recentes');
+});
+
+test('[PROG-12] IDs de questão inválidos são recusados', () => {
   for (const questionId of [undefined, null, 7, '', 'com espaço']) {
     assert.throws(() => P.recordAnswer(P.createEmpty(), { questionId, option: 0, correct: true, hintUsed: false }), String(questionId));
   }
