@@ -4,7 +4,7 @@ Aplicativo web educativo, responsivo e sem dependências externas, dedicado ao e
 
 ## Como abrir
 
-Abra `index.html` em um navegador atualizado. O conteúdo principal funciona sem instalação e sem conexão com a internet. Mantenha `content.js` e `progress.js` na mesma pasta de `index.html`: o primeiro contém as trilhas e questões; o segundo, as regras de progresso e de salvamento. O progresso é guardado no armazenamento local do navegador (`localStorage`).
+Abra `index.html` em um navegador atualizado. O conteúdo principal funciona sem instalação e sem conexão com a internet. Mantenha `content.js`, `progress.js`, `html.js` e `app.js` na mesma pasta de `index.html`: eles contêm, respectivamente, as trilhas e questões, as regras de progresso e de salvamento, o gerador de HTML seguro e a interface. O progresso é guardado no armazenamento local do navegador (`localStorage`).
 
 ## O que já está incluído
 
@@ -111,6 +111,8 @@ O comportamento do aplicativo está descrito em specs, e as specs são a fonte d
 - `specs/*.spec.md`: um requisito por comportamento, com ID (por exemplo, `PROG-03`), critérios em Dado / Quando / Então e a forma de verificação (`automática`, `manual` ou `planejada`).
 - `specs/RASTREABILIDADE.md`: matriz gerada automaticamente, ligando cada requisito aos testes que o verificam.
 - `specs/_template.md`: modelo para uma funcionalidade nova.
+- `schemas/`: contratos formais (JSON Schema) do conteúdo e dos dados salvos, validados nos testes.
+- `docs/adr/`: registros das decisões de arquitetura, com contexto, alternativas e consequências.
 
 | Spec | Prefixo | Assunto |
 |---|---|---|
@@ -123,10 +125,16 @@ Todo teste cita no título os requisitos que verifica, como `test('[PROG-03] …
 
 ## Estrutura
 
-- `index.html`: interface (HTML, CSS e JavaScript da página).
+- `index.html`: estrutura da página, estilos e política de segurança de conteúdo (CSP); não contém JavaScript.
+- `app.js`: interface — telas, cliques e avisos.
+- `html.js`: gerador de HTML seguro, que escapa todo texto por padrão.
 - `content.js`: conteúdo didático — trilhas, questões e resumos, na ordem da apostila.
 - `progress.js`: regras de progresso, estrelas, meta diária, validação, migração e acesso protegido ao `localStorage`.
 - `specs/`: constituição, specs com requisitos, modelo e matriz de rastreabilidade.
+- `schemas/`: contratos do conteúdo e dos dados salvos.
+- `docs/adr/`: registros de decisão de arquitetura.
+- `tests/html.test.js` e `tests/schema.test.js`: testes do gerador de HTML e dos contratos.
+- `scripts/validate-schema.js`: validador de JSON Schema mínimo, sem dependências.
 - `tests/content.test.js`: testes do conteúdo (estrutura, IDs e gabaritos estáveis, gabaritos recalculados pelas fórmulas).
 - `tests/progress.test.js`: testes das regras de progresso e de salvamento.
 - `tests/repo.test.js`: testes de segurança sobre os arquivos do repositório.
@@ -160,7 +168,10 @@ Os testes cobrem:
 - marcação “Estamos aqui na escola” apontando para uma trilha existente;
 - posição e texto da resposta correta das 30 questões originais;
 - retenção dos últimos 120 dias de atividade;
-- ausência de recursos externos, de envio de dados e de imagens ou PDFs versionados.
+- ausência de recursos externos, de envio de dados e de imagens ou PDFs versionados;
+- política de segurança de conteúdo, ausência de JavaScript embutido e escape de todo texto inserido na página;
+- conteúdo e dados salvos conferidos contra os contratos em `schemas/`, inclusive com dados maliciosos no armazenamento;
+- ações do CI fixadas por SHA e com permissões só de leitura.
 
 Os testes automatizados cobrem o conteúdo e as regras, mas não a interface: veja “Verificação manual” abaixo.
 

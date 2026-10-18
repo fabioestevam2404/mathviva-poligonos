@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mathviva/progress-v2.schema.json",
+  "title": "Progresso salvo do MathViva 9, versão 2",
+  "description": "Contrato do valor gravado em localStorage na chave mathviva-poligonos-progress. Spec: specs/storage.spec.md (STOR-14). Regras entre campos (por exemplo, correctCount <= attempts) são garantidas por sanitize() e seus testes.",
+  "type": "object",
+  "required": ["schemaVersion", "xp", "questions", "activity", "legacy"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "xp": { "$ref": "#/$defs/count" },
+    "questions": {
+      "type": "object",
+      "patternProperties": { "^[A-Za-z0-9_-]{1,64}$": { "$ref": "#/$defs/question" } },
+      "additionalProperties": false
+    },
+    "activity": {
+      "type": "object",
+      "patternProperties": { "^\\d{4}-\\d{2}-\\d{2}$": { "$ref": "#/$defs/day" } },
+      "additionalProperties": false
+    },
+    "legacy": {
+      "type": ["object", "null"],
+      "required": ["answered", "correct", "xp", "topics", "lastStudy"],
+      "additionalProperties": false,
+      "properties": {
+        "answered": { "$ref": "#/$defs/count" },
+        "correct": { "$ref": "#/$defs/count" },
+        "xp": { "$ref": "#/$defs/count" },
+        "topics": {
+          "type": "object",
+          "patternProperties": { "^[A-Za-z0-9_-]{1,64}$": { "$ref": "#/$defs/count" } },
+          "additionalProperties": false
+        },
+        "lastStudy": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "migratedAt": { "$ref": "#/$defs/dateTime" }
+      }
+    }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "dateTime": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$" },
+    "answer": {
+      "type": "object",
+      "required": ["option", "correct", "hintUsed", "at"],
+      "additionalProperties": false,
+      "properties": {
+        "option": { "$ref": "#/$defs/count" },
+        "correct": { "type": "boolean" },
+        "hintUsed": { "type": "boolean" },
+        "at": { "$ref": "#/$defs/dateTime" }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["attempts", "correctCount", "hintCount", "first", "last", "masteredAt"],
+      "additionalProperties": false,
+      "properties": {
+        "attempts": { "type": "integer", "minimum": 1 },
+        "correctCount": { "$ref": "#/$defs/count" },
+        "hintCount": { "$ref": "#/$defs/count" },
+        "first": { "$ref": "#/$defs/answer" },
+        "last": { "$ref": "#/$defs/answer" },
+        "masteredAt": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$" }
+      }
+    },
+    "day": {
+      "type": "object",
+      "required": ["answered", "correct"],
+      "additionalProperties": false,
+      "properties": { "answered": { "$ref": "#/$defs/count" }, "correct": { "$ref": "#/$defs/count" } }
+    }
+  }
+}

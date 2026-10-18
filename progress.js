@@ -22,9 +22,12 @@
 
   const isObject = v => v !== null && typeof v === 'object' && !Array.isArray(v);
   const isCount = v => Number.isInteger(v) && v >= 0;
-  const isText = v => typeof v === 'string' && v.length > 0 && v.length <= 64;
   const QUESTION_ID = /^[a-z0-9_-]{1,64}$/i;
   const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+  // Datas e horários no formato de Date.prototype.toISOString(). Nenhum texto livre é aceito (STOR-14).
+  const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
+  const isDateTime = v => typeof v === 'string' && DATE_TIME.test(v);
+  const isDateKey = v => typeof v === 'string' && DATE_KEY.test(v);
 
   /** Data no fuso horário do dispositivo, no formato AAAA-MM-DD. */
   function localDateKey(date) {
@@ -39,7 +42,7 @@
 
   function sanitizeAnswer(raw) {
     if (!isObject(raw)) return null;
-    if (!isCount(raw.option) || typeof raw.correct !== 'boolean' || typeof raw.hintUsed !== 'boolean' || !isText(raw.at)) return null;
+    if (!isCount(raw.option) || typeof raw.correct !== 'boolean' || typeof raw.hintUsed !== 'boolean' || !isDateTime(raw.at)) return null;
     return { option: raw.option, correct: raw.correct, hintUsed: raw.hintUsed, at: raw.at };
   }
 
@@ -51,7 +54,7 @@
     if (!isCount(hintCount) || hintCount > attempts) return null;
     const first = sanitizeAnswer(raw.first), last = sanitizeAnswer(raw.last);
     if (!first || !last) return null;
-    if (raw.masteredAt !== null && !isText(raw.masteredAt)) return null;
+    if (raw.masteredAt !== null && !isDateTime(raw.masteredAt)) return null;
     return { attempts, correctCount, hintCount, first, last, masteredAt: raw.masteredAt };
   }
 
@@ -59,9 +62,9 @@
     if (!isObject(raw)) return null;
     const out = { answered: 0, correct: 0, xp: 0, topics: {}, lastStudy: null };
     for (const k of ['answered', 'correct', 'xp']) if (isCount(raw[k])) out[k] = raw[k];
-    if (isObject(raw.topics)) for (const [k, v] of Object.entries(raw.topics)) if (isCount(v)) out.topics[k] = v;
-    if (isText(raw.lastStudy)) out.lastStudy = raw.lastStudy;
-    if (isText(raw.migratedAt)) out.migratedAt = raw.migratedAt;
+    if (isObject(raw.topics)) for (const [k, v] of Object.entries(raw.topics)) if (QUESTION_ID.test(k) && isCount(v)) out.topics[k] = v;
+    if (isDateKey(raw.lastStudy)) out.lastStudy = raw.lastStudy;
+    if (isDateTime(raw.migratedAt)) out.migratedAt = raw.migratedAt;
     return out;
   }
 
